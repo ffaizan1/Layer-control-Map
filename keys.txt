@@ -1,0 +1,4 @@
+PopDen - 2010 population density in people/square kilometer
+MedAge - median age
+HHSize - average household size (number of people)
+Vacancy - percentage vacant housing unit

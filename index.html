@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="pin.png">
+        <title>Lab 4</title>
+
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+           crossorigin=""/>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+           crossorigin=""></script>
+
+        <style type="text/css">
+          html, body { margin: 0; padding: 0; height: 100%; }
+          #map { min-height: 100%; }
+        </style>
+
+        <!-- Your GeoJSON data files -->
+        <script type="text/javascript" src="data2.js"></script>
+        <script type="text/javascript" src="data.js"></script>
+        <script type="text/javascript" src="illinois.js"></script>
+
+
+        <style>
+          .legend {
+              padding: 6px 8px;
+              line-height: 18px;
+              background: rgba(255,255,255,0.9);
+              box-shadow: 0 0 15px rgba(0,0,0,0.2);
+              border-radius: 5px;
+          }
+
+          .legend i {
+              width: 18px;
+              height: 18px;
+              float: left;
+              margin-right: 8px;
+              opacity: 0.7;
+          }
+
+          #map-heading {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            border: 2px solid black;
+            padding: 10px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+			font-size:22px;
+			box-shadow:0 2px 5px 
+			rgba(0,0,0,3);
+          }
+        </style>
+    </head>
+
+    <body>
+        <h1 id="map-heading">Population Density and Asian Population in Chicago,Illinois:</h1>
+        <div id="map"></div>
+
+        <script type="text/javascript">
+
+          // Create the map
+          var map = L.map('map', {
+              center: [41.890979, -87.630955],
+              zoom: 6
+          });
+
+          // Tile layers
+          var Openstreet = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+             maxZoom: 10,
+             minZoom: 5
+           }).addTo(map);
+
+          var Esri_WorldTopoMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+             attribution: 'Tiles &copy; Esri',
+			  maxZoom: 10,
+             minZoom: 5
+          }).addTo(map);
+
+          // Population Density Layer
+          function getColor(value) {
+              return value > 8275 ? '#a63603':
+                     value > 5368 ? '#e6550d':
+                     value > 3852 ? '#fd8d3c':
+                     value > 1847 ? '#fdbe85':
+                                   '#feedde';
+          }
+
+          function style(feature) {
+              return {
+                  fillColor: getColor(feature.properties.PopDen),
+                  weight: 2,
+                  opacity: 1,
+                  color: 'black',
+                  dashArray: '3',
+                  fillOpacity: 0.7
+              };
+          }
+
+          var Density = L.geoJson(data, { style: style });
+		           // Asian Population Layer
+          function getColor1(value) {
+              return value > 11038 ? '#08519c':
+                     value > 5653 ? '#3182bd':
+                     value > 2445 ? '#6baed6':
+                     value > 727 ? '#bdd7e7':
+                                  '#eff3ff';
+          }
+
+          function style1(feature) {
+              return {
+                  fillColor: getColor1(feature.properties.Asian),
+                  weight: 2,
+                  opacity: 1,
+                  color: 'black',
+                  dashArray: '3',
+                  fillOpacity: 0.7
+              };
+          }
+
+          var Asian = L.geoJson(data2, { style: style1 });
+
+          // * Illinois Boundary Layer *
+          var Illinois = L.geoJson(illinois, {
+              style: function(feature) {
+                  return {
+                      color: 'blue',    // Boundary color
+                      weight: 2,        // Line weight
+                      fillOpacity: 0     // No fill color inside the boundary
+                  };
+              }
+          }).addTo(map);  // Add Illinois boundary to the map by default on load
+
+          // * Adding City Markers as a Layer Group *
+          var cityMarkers = L.layerGroup();  // Create a layer group for city markers
+
+          var cities = [
+              { name: "Chicago", lat: 41.8781, lon: -87.6298 },
+              { name: "Springfield", lat: 39.7817, lon: -89.6501 },
+              { name: "Rockford", lat: 42.2711, lon: -89.0937 },
+              { name: "Naperville", lat: 41.7508, lon: -88.1535 },
+              { name: "Peoria", lat: 40.6936, lon: -89.5890 }
+          ];
+
+          // Add city markers to the layer group
+          cities.forEach(function(city) {
+              L.marker([city.lat, city.lon])
+                .bindPopup("<b>" + city.name + "</b>")  // Popup for the city
+                .addTo(cityMarkers);  // Add marker to the cityMarkers layer group
+          });
+
+          // Add Layer Controls (including the new cityMarkers overlay)
+          var basemaps = {
+              "Openstreet": Openstreet,
+              "Esri_WorldTopoMap": Esri_WorldTopoMap
+          };
+
+          var overlaymaps = {
+              "Population Density": Density,
+              "Asian Population": Asian,
+              "Illinois Boundary": Illinois,
+              "City Markers": cityMarkers  // Add city markers as an overlay option
+          };
+
+          // Update the control to include cityMarkers
+          L.control.layers(basemaps, overlaymaps).addTo(map);
+
+          // Legend for Population Density
+          var legendDensity = L.control({ position: 'bottomright' });
+          legendDensity.onAdd = function(map) {
+              var div = L.DomUtil.create('div', 'legend'),
+                  grades = [0, 1847, 3852, 5368, 8275];
+
+              div.innerHTML = '<b>Population Density <br> 2010 <br></b>';
+
+              for (var i = 0; i < grades.length; i++) {
+                  div.innerHTML +=
+                      '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                      grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+              }
+
+              return div;
+          };
+
+          // Legend for Asian Population
+          var legendAsian = L.control({ position: 'bottomright' });
+          legendAsian.onAdd = function(map) {
+              var div = L.DomUtil.create('div', 'legend'),
+                  grades = [0, 727, 2445, 5653, 11038];
+
+              div.innerHTML = '<b>Asian Population <br> 2010 <br></b>';
+
+              for (var i = 0; i < grades.length; i++) {
+                  div.innerHTML +=
+                      '<i style="background:' + getColor1(grades[i] + 1) + '"></i> ' +
+                      grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+              }
+
+              return div;
+          };
+
+          // Event listeners to manage legends
+          map.on('overlayadd', function(eventLayer) {
+              if (eventLayer.name === 'Population Density') {
+                  legendDensity.addTo(map);
+              }
+              if (eventLayer.name === 'Asian Population') {
+                  legendAsian.addTo(map);
+              }
+          });
+
+          map.on('overlayremove', function(eventLayer) {
+              if (eventLayer.name === 'Population Density') {
+                  map.removeControl(legendDensity);
+              }
+              if (eventLayer.name === 'Asian Population') {
+                  map.removeControl(legendAsian);
+              }
+          });
+
+        </script>
+    </body>
+</html>
